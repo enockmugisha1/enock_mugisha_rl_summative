@@ -1,0 +1,6 @@
+{
+  "a2c": "a2c02_rollout_short",
+  "dqn": "dqn04_lr_high",
+  "ppo": "ppo01_baseline",
+  "reinforce": "rf04_lr_high"
+}

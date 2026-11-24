@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AgriGuard — 3D Farm Simulation</title>
+<style>
+  :root{--bg:#0d1510;--panel:rgba(10,22,14,.88);--gold:#d9b44a;--txt:#e8f0e4;--dim:#8ba888;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:14px/1.5 ui-monospace,"SF Mono",Menlo,monospace;overflow:hidden}
+  #c{position:fixed;inset:0;display:block}
+  .hud{position:fixed;background:var(--panel);border:1px solid #2b4030;border-radius:10px;padding:12px 14px;backdrop-filter:blur(6px)}
+  #top{top:14px;left:14px;min-width:290px}
+  #legend{bottom:14px;left:14px}
+  #bars{top:14px;right:14px;min-width:220px}
+  h1{font:600 15px/1.3 ui-monospace;color:var(--gold);letter-spacing:.06em;margin-bottom:8px}
+  .row{display:flex;justify-content:space-between;gap:18px;font-size:12.5px}
+  .row span:last-child{color:#fff;font-weight:600}
+  .k{color:var(--dim)}
+  .meter{height:7px;border-radius:4px;background:#1d2b20;margin:5px 0 10px;overflow:hidden}
+  .meter i{display:block;height:100%;border-radius:4px;transition:width .25s}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+  .lg{font-size:12px;color:var(--dim);margin:3px 0}
+  #act{margin-top:8px;padding-top:8px;border-top:1px solid #2b4030;color:var(--gold);font-weight:600;font-size:13px}
+  #wait{position:fixed;inset:0;display:grid;place-items:center;color:var(--dim);font-size:13px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="wait">waiting for simulation state…</div>
+
+<div class="hud" id="top">
+  <h1>AGRIGUARD · FIELD CONTROL</h1>
+  <div class="row"><span class="k">Season day</span><span id="d">–</span></div>
+  <div class="row"><span class="k">Work slot</span><span id="s">–</span></div>
+  <div class="row"><span class="k">Banked yield</span><span id="y">–</span></div>
+  <div class="row"><span class="k">Plots alive</span><span id="al">–</span></div>
+  <div class="row"><span class="k">Plots harvested</span><span id="hv">–</span></div>
+  <div class="row"><span class="k">Weather</span><span id="w">–</span></div>
+  <div id="act">action: –</div>
+</div>
+
+<div class="hud" id="bars">
+  <div class="row"><span class="k">Water tank</span><span id="tk">–</span></div>
+  <div class="meter"><i id="tkb" style="background:#4aa3d9;width:0"></i></div>
+  <div class="row"><span class="k">Fertiliser</span><span id="ft">–</span></div>
+  <div class="meter"><i id="ftb" style="background:#d9b44a;width:0"></i></div>
+  <div class="row"><span class="k">Biopesticide</span><span id="pk">–</span></div>
+  <div class="meter"><i id="pkb" style="background:#9d6bd9;width:0"></i></div>
+  <div class="row"><span class="k">Rain forecast</span><span id="rp">–</span></div>
+  <div class="meter"><i id="rpb" style="background:#5fc9a3;width:0"></i></div>
+</div>
+
+<div class="hud" id="legend">
+  <div class="lg"><i class="sw" style="background:#6b4a2f"></i>soil — brightness = moisture</div>
+  <div class="lg"><i class="sw" style="background:#4caf50"></i>crop — height &amp; colour = growth stage</div>
+  <div class="lg"><i class="sw" style="background:#c0392b"></i>pest infestation (red haze)</div>
+  <div class="lg"><i class="sw" style="background:#d9b44a"></i>harvested stubble</div>
+  <div class="lg"><i class="sw" style="background:#555"></i>dead plot</div>
+  <div class="lg" style="margin-top:6px;color:#6f8a6c">drag to orbit · scroll to zoom</div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js",
+            "three/addons/controls/OrbitControls.js":"./vendor/OrbitControls.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const PLOT = 2.4, GAP = 0.25;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1510);
+scene.fog = new THREE.Fog(0x0d1510, 26, 70);
+
+const cam = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 300);
+cam.position.set(10.5, 9.5, 12);
+
+// preserveDrawingBuffer lets the scene be captured to PNG for the report
+const rndr = new THREE.WebGLRenderer({canvas:document.getElementById('c'), antialias:true, preserveDrawingBuffer:true});
+rndr.setPixelRatio(Math.min(devicePixelRatio,2));
+rndr.setSize(innerWidth, innerHeight);
+rndr.shadowMap.enabled = true;
+rndr.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const ctrl = new OrbitControls(cam, rndr.domElement);
+ctrl.enableDamping = true; ctrl.target.set(0,0.6,0); ctrl.maxPolarAngle = Math.PI/2.15;
+ctrl.minDistance = 6; ctrl.maxDistance = 40;
+
+// ---- lighting: warm low sun + cool sky fill -------------------------------
+scene.add(new THREE.HemisphereLight(0xbcd8f2, 0x3a4f30, 0.95));
+scene.add(new THREE.AmbientLight(0xffffff, 0.22));
+const sun = new THREE.DirectionalLight(0xffe8c0, 2.6);
+sun.position.set(11, 17, 7); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+const sc = sun.shadow.camera;
+sc.left=-16; sc.right=16; sc.top=16; sc.bottom=-16; sc.far=60;
+scene.add(sun);
+
+// ---- ground ---------------------------------------------------------------
+scene.add(new THREE.Mesh(
+  new THREE.CircleGeometry(30, 64).rotateX(-Math.PI/2),
+  new THREE.MeshStandardMaterial({color:0x1b2a18, roughness:1})
+));
+
+let grid = 0, plots = [], rover = null, inited = false;
+
+function buildField(g){
+  grid = g;
+  const span = g*PLOT + (g-1)*GAP;
+  const off  = -span/2 + PLOT/2;
+
+  for(let i=0;i<g*g;i++){
+    const r = Math.floor(i/g), c = i%g;
+    const x = off + c*(PLOT+GAP), z = off + r*(PLOT+GAP);
+    const grp = new THREE.Group(); grp.position.set(x,0,z); scene.add(grp);
+
+    // soil bed
+    const soil = new THREE.Mesh(
+      new THREE.BoxGeometry(PLOT, 0.34, PLOT),
+      new THREE.MeshStandardMaterial({color:0x6b4a2f, roughness:0.95}));
+    soil.position.y = 0.17; soil.receiveShadow = true; soil.castShadow = true;
+    grp.add(soil);
+
+    // crop: 3x3 stalks of instanced cones, scaled by growth
+    const stalks = [];
+    for(let a=0;a<3;a++) for(let b=0;b<3;b++){
+      const m = new THREE.Mesh(
+        new THREE.ConeGeometry(0.21, 1.0, 8),
+        new THREE.MeshStandardMaterial({color:0x4caf50, roughness:0.7}));
+      m.position.set((a-1)*0.62, 0.34, (b-1)*0.62);
+      m.castShadow = true; grp.add(m); stalks.push(m);
+    }
+
+    // pest haze
+    const haze = new THREE.Mesh(
+      new THREE.SphereGeometry(0.95, 14, 12),
+      new THREE.MeshBasicMaterial({color:0xc0392b, transparent:true, opacity:0}));
+    haze.position.y = 0.9; grp.add(haze);
+
+    plots.push({grp, soil, stalks, haze});
+  }
+
+  // rover: body + cab + water drum
+  rover = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.25,0.4,0.85),
+    new THREE.MeshStandardMaterial({color:0xd9b44a, metalness:.45, roughness:.35}));
+  body.position.y = 0.42; body.castShadow = true; rover.add(body);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.4,0.62),
+    new THREE.MeshStandardMaterial({color:0x2c3e50, metalness:.3, roughness:.4}));
+  cab.position.set(-0.2,0.78,0); cab.castShadow = true; rover.add(cab);
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.6,16),
+    new THREE.MeshStandardMaterial({color:0x4aa3d9, metalness:.2, roughness:.5}));
+  drum.rotation.z = Math.PI/2; drum.position.set(0.38,0.72,0); rover.add(drum);
+  for(const [wx,wz] of [[-0.42,0.46],[0.42,0.46],[-0.42,-0.46],[0.42,-0.46]]){
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.14,14),
+      new THREE.MeshStandardMaterial({color:0x111, roughness:.9}));
+    w.rotation.x = Math.PI/2; w.position.set(wx,0.22,wz); rover.add(w);
+  }
+  // beacon so the rover is findable in a wide shot
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8),
+    new THREE.MeshBasicMaterial({color:0xffdd55}));
+  beacon.position.set(-0.2,1.05,0); rover.add(beacon);
+  rover.userData.beacon = beacon;
+  scene.add(rover);
+  inited = true;
+  document.getElementById('wait').style.display = 'none';
+}
+
+function plotXZ(i){
+  const span = grid*PLOT + (grid-1)*GAP, off = -span/2 + PLOT/2;
+  const r = Math.floor(i/grid), c = i%grid;
+  return [off + c*(PLOT+GAP), off + r*(PLOT+GAP)];
+}
+
+const lerp = (a,b,t)=>a+(b-a)*t;
+let target = new THREE.Vector3(0,0,0);
+
+function apply(f){
+  if(!inited) buildField(f.grid);
+
+  f.plots.forEach((p,i)=>{
+    const o = plots[i];
+    // soil colour: dry pale tan -> wet dark brown
+    const dry = new THREE.Color(0x9c7b52), wet = new THREE.Color(0x4a3220);
+    o.soil.material.color.copy(dry).lerp(wet, Math.min(1,p.moisture));
+
+    if(p.harvested){
+      o.stalks.forEach(s=>{ s.scale.set(1,0.18,1); s.material.color.setHex(0xd9b44a); });
+      o.haze.material.opacity = 0;
+    } else if(!p.alive){
+      o.stalks.forEach(s=>{ s.scale.set(0.8,0.3,0.8); s.material.color.setHex(0x555047); });
+      o.haze.material.opacity = 0;
+    } else {
+      // height tracks growth; colour goes seedling-green -> ripe-gold, dulled by poor health
+      const h = 0.22 + 1.75*p.growth;
+      const young = new THREE.Color(0x6abf4b), ripe = new THREE.Color(0xc9a227);
+      const col = young.clone().lerp(ripe, Math.max(0,Math.min(1,(p.growth-0.45)/0.55)));
+      col.lerp(new THREE.Color(0x6b6b4a), 1-p.health);
+      o.stalks.forEach(s=>{ s.scale.set(1,h,1); s.material.color.copy(col); });
+      o.haze.material.opacity = 0.42*p.pest;
+      o.haze.scale.setScalar(0.7+0.5*p.pest);
+    }
+  });
+
+  const [rx,rz] = plotXZ(f.rover);
+  target.set(rx, 0, rz);
+
+  const P = n => (100*n).toFixed(0)+'%';
+  document.getElementById('d').textContent  = `${f.day} / 60`;
+  document.getElementById('s').textContent  = `${f.slot+1} / 4   (step ${f.step})`;
+  document.getElementById('y').textContent  = f.yield.toFixed(2);
+  document.getElementById('al').textContent = f.plots.filter(p=>p.alive&&!p.harvested).length;
+  document.getElementById('hv').textContent = f.plots.filter(p=>p.harvested).length;
+  document.getElementById('w').textContent  = (f.rained? 'RAIN':'dry') + ` · ${(f.temp*35).toFixed(0)}°C`;
+  document.getElementById('act').textContent = 'action: ' + (f.action || '–');
+
+  document.getElementById('tk').textContent = P(f.tank);
+  document.getElementById('tkb').style.width = P(f.tank);
+  document.getElementById('ft').textContent = `${f.fert.toFixed(0)} doses`;
+  document.getElementById('ftb').style.width = P(f.fert/12);
+  document.getElementById('pk').textContent = `${f.pestkit.toFixed(0)} doses`;
+  document.getElementById('pkb').style.width = P(f.pestkit/8);
+  document.getElementById('rp').textContent = P(f.rain_prob);
+  document.getElementById('rpb').style.width = P(f.rain_prob);
+
+  // sun colour tracks temperature, so hot dry days read visually hot
+  sun.color.setHSL(0.11 - 0.04*f.temp, 0.75, 0.62);
+}
+
+async function poll(){
+  try{
+    const r = await fetch('/state', {cache:'no-store'});
+    const f = await r.json();
+    if(f && f.plots) apply(f);
+  }catch(e){}
+  setTimeout(poll, 120);
+}
+poll();
+
+addEventListener('resize', ()=>{
+  cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
+  rndr.setSize(innerWidth, innerHeight);
+});
+
+// exposed so the capture script (and a human debugging the scene) can reach it
+window.__agri = {rndr, scene, cam, ctrl, THREE, capture: () => {rndr.render(scene,cam); return rndr.domElement.toDataURL('image/png');}};
+
+// ?capture=1&w=1100&h=680 -> render once at a fixed size and POST the PNG back,
+// so the report figure can be regenerated with a single command.
+if (new URLSearchParams(location.search).get('capture')) {
+  const q = new URLSearchParams(location.search);
+  const W = +(q.get('w') || 1100), H = +(q.get('h') || 680);
+  const tryShot = async (tries=0) => {
+    const f = await fetch('/state', {cache:'no-store'}).then(r=>r.json()).catch(()=>null);
+    if ((!f || !f.plots || !inited) && tries < 40) return setTimeout(()=>tryShot(tries+1), 250);
+    rndr.setSize(W, H, false); cam.aspect = W/H; cam.updateProjectionMatrix();
+    await new Promise(r=>setTimeout(r, 900));          // let textures/shadows settle
+    rndr.render(scene, cam);
+    // project each plot centre (and the rover) into pixel space of this render
+    const toScreen = (v3) => {
+      const v = v3.clone().project(cam);
+      return [Math.round((v.x * 0.5 + 0.5) * W), Math.round((-v.y * 0.5 + 0.5) * H)];
+    };
+    const points = {
+      w: W, h: H,
+      plots: plots.map(o => toScreen(o.grp.position.clone().setY(0.9))),
+      rover: toScreen(rover.position.clone().setY(1.1)),
+      state: await fetch('/state', {cache:'no-store'}).then(r => r.json()),
+    };
+    await fetch('/capture', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({png: rndr.domElement.toDataURL('image/png'), points})});
+    document.title = 'AgriGuard — captured';
+  };
+  tryShot();
+}
+
+let t = 0;
+(function loop(){
+  requestAnimationFrame(loop);
+  t += 0.016;
+  if(rover){
+    rover.position.x = lerp(rover.position.x, target.x, 0.14);
+    rover.position.z = lerp(rover.position.z, target.z, 0.14);
+    rover.userData.beacon.material.color.setHSL(0.13, 1, 0.5+0.28*Math.sin(t*5));
+  }
+  ctrl.update();
+  rndr.render(scene, cam);
+})();
+</script>
+</body>
+</html>

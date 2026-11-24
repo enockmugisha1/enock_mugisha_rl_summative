@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Development scratch: diagnostic runs from building the agents, and the
+# raw sweep console log. The reported results in logs/ are kept.
+logs/_diagnostics/
+logs/_sweep/
+models/_diagnostics/
