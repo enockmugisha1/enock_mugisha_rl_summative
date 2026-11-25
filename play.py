@@ -24,7 +24,8 @@ from environment import ACTION_NAMES, AgriGuardEnv
 
 
 def play(agent: str = "best", episodes: int = 1, render: bool = True,
-         delay: float = 0.08, quiet: bool = False, seed: int = 500):
+         delay: float = 0.08, quiet: bool = False, seed: int = 500,
+         every: int = 10):
     env = AgriGuardEnv(seed=7)
 
     if agent == "expert":
@@ -70,7 +71,7 @@ def play(agent: str = "best", episodes: int = 1, render: bool = True,
             if renderer:
                 renderer.update(env, {"action": ACTION_NAMES[a]})
                 time.sleep(delay)
-            if not quiet and step % 10 == 0:
+            if not quiet and step % every == 0:
                 print(f"\n=== step {step:3d} | day {info['day']:2d} | "
                       f"action {ACTION_NAMES[a]:11s} | return {total:8.2f} ===")
                 print(env.to_ascii())
@@ -107,8 +108,10 @@ if __name__ == "__main__":
     ap.add_argument("--no-render", action="store_true")
     ap.add_argument("--delay", type=float, default=0.08)
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--every", type=int, default=10,
+                    help="print the field every N steps (lower = more detail)")
     ap.add_argument("--seed", type=int, default=500,
                     help="episode seed; episode k uses seed+k (lets you replay a good season)")
     a = ap.parse_args()
     play(a.agent, a.episodes, render=not a.no_render, delay=a.delay, quiet=a.quiet,
-         seed=a.seed)
+         seed=a.seed, every=a.every)

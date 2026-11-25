@@ -1,0 +1,236 @@
+{
+  "w": 1100,
+  "h": 660,
+  "plots": [
+    [
+      537,
+      229
+    ],
+    [
+      609,
+      252
+    ],
+    [
+      691,
+      280
+    ],
+    [
+      786,
+      311
+    ],
+    [
+      473,
+      256
+    ],
+    [
+      545,
+      284
+    ],
+    [
+      630,
+      316
+    ],
+    [
+      730,
+      355
+    ],
+    [
+      396,
+      288
+    ],
+    [
+      469,
+      321
+    ],
+    [
+      556,
+      361
+    ],
+    [
+      660,
+      408
+    ],
+    [
+      305,
+      327
+    ],
+    [
+      377,
+      367
+    ],
+    [
+      465,
+      416
+    ],
+    [
+      572,
+      475
+    ]
+  ],
+  "rover": [
+    598,
+    310
+  ],
+  "state": {
+    "day": 2,
+    "slot": 2,
+    "step": 10,
+    "tank": 1,
+    "fert": 12,
+    "pestkit": 8,
+    "rover": 6,
+    "yield": 0,
+    "rain_prob": 0.5692636246981335,
+    "matured": 0,
+    "temp": 0.5302052265450005,
+    "rained": false,
+    "grid": 4,
+    "plots": [
+      {
+        "moisture": 0.5849018960988555,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.4814686618482238,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5663604323512266,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.6244291791389145,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.6088191844871556,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.4732918466952263,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5886578627282966,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.4572321258498818,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5491047337896947,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.494740852851706,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.6341581784799295,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.6388429522553662,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.537856603811352,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5796391399179609,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.6051846122430651,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5061022462695712,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5808091119951404,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5240618427313274,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.587556928360262,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5926440174811465,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5991843162206424,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.559835561861644,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5318007964338851,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.6230076258102496,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.6287651296665637,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5358568521377384,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.6364845448413814,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.613118697697502,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.6588765317069063,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5418886535457903,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      },
+      {
+        "moisture": 0.5543685013028838,
+        "growth": 0.18500000000000005,
+        "nutrient": 0.5035154837571454,
+        "pest": 0,
+        "health": 1,
+        "alive": true,
+        "harvested": false
+      }
+    ],
+    "action": "WAIT"
+  }
+}
