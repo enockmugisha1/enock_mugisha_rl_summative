@@ -150,6 +150,49 @@ def table_rows(csv_name, cols, labels):
     return labels, rows
 
 
+
+def add_hyperlink(para, url, text):
+    """A real clickable Word hyperlink (plain text alone is not clickable)."""
+    part = para.part
+    r_id = part.relate_to(
+        url,
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        is_external=True)
+    link = OxmlElement("w:hyperlink")
+    link.set(qn("r:id"), r_id)
+    run = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+    u = OxmlElement("w:u"); u.set(qn("w:val"), "single")
+    rPr.append(u)
+    run.append(rPr)
+    t = OxmlElement("w:t"); t.text = text
+    run.append(t)
+    link.append(run)
+    para._p.append(link)
+    return para
+
+
+def set_body(p, text, space_after=7):
+    """Write a multi-paragraph block.
+
+    The content strings use \n to separate paragraphs; writing them into a
+    single Word paragraph produces a wall of text, so each chunk becomes its own
+    paragraph with space between them.
+    """
+    chunks = [c.strip() for c in text.split("\n") if c.strip()]
+    if not chunks:
+        return p
+    set_text(p, chunks[0])
+    p.paragraph_format.space_after = Pt(space_after)
+    p.paragraph_format.line_spacing = 1.15
+    last = p
+    for c in chunks[1:]:
+        last = para_after(last, c)
+        last.paragraph_format.space_after = Pt(space_after)
+        last.paragraph_format.line_spacing = 1.15
+    return last
+
+
 # ---------------------------------------------------------------- content
 OVERVIEW = (
     "AgriGuard models precision irrigation and crop-health management on a Rwandan "
@@ -289,16 +332,19 @@ SYSTEM_DESIGN = (
 DQN_DESIGN = (
     "DQN (training/dqn_training.py) uses TorchRL's DQNLoss over a QValueActor wrapping a "
     "135 -> 256 -> 256 -> 9 MLP. The final layer is initialised small so early Q-values start "
-    "near zero and the bootstrap targets stay stable. Experience is stored in a "
+    "near zero and the bootstrap targets stay stable.\n"
+    "Experience is stored in a "
     "LazyTensorStorage replay buffer (100,000 transitions by default) and sampled in batches of "
     "128. A delayed target network is tracked by SoftUpdate at rate tau. Exploration uses an "
     "EGreedyModule annealed from eps=1.0 to a floor over a configurable fraction of training. "
-    "Three modifications proved necessary on this task. First, n-step returns (n=3): with "
+    "\nThree modifications proved necessary on this task. First, n-step returns (n=3): with "
     "one-step TD the harvest payoff sits ~74 steps beyond the irrigation that earns it and the "
-    "signal propagates far too slowly. Second, a Huber (smooth L1) objective rather than L2: "
+    "signal propagates far too slowly.\n"
+    "Second, a Huber (smooth L1) objective rather than L2: "
     "harvest (+14) and plot death (-3) are two orders of magnitude larger than routine step "
     "costs (0.02-0.09), and under L2 a handful of transitions dominated each batch gradient, "
-    "driving pre-clip gradient norms above 120 and diverging the value head. Third, a high "
+    "driving pre-clip gradient norms above 120 and diverging the value head.\n"
+    "Third, a high "
     "update-to-data ratio: at 8 gradient updates per 1,000 collected frames the network "
     "received only ~1,200 updates in total and never fit, so the ratio is swept from 8 to 128. "
     "Double-DQN is enabled by default and disabled in one control row."
@@ -333,11 +379,12 @@ DQN_ANALYSIS = (
     "Three controls dominate the DQN table. Learning rate: dqn04_lr_high (2.5e-4) is the only "
     "configuration to clear the random floor, at +7.17; every 5e-5 run lands between -19 and -76, "
     "because at this budget the smaller step size never moves the value head far enough. "
-    "Target-update rate: tau = 0.05 (dqn07_target_fast, -75.97) is the worst run in the entire "
+    "\nTarget-update rate: tau = 0.05 (dqn07_target_fast, -75.97) is the worst run in the entire "
     "study - a fast-tracking target destroys the stationarity the TD regression depends on - while "
     "tau = 0.001 recovers to -36.58. Replay capacity: shrinking the buffer to 5,000 (-59.57) costs "
     "about 11 points against the 100,000 baseline (-48.82), since with a 240-step horizon a small "
-    "buffer holds only ~20 episodes and samples stay strongly correlated. Exploration behaves as "
+    "buffer holds only ~20 episodes and samples stay strongly correlated.\n"
+    "Exploration behaves as "
     "theory predicts but cannot rescue the method: a near-greedy floor (eps_end = 0.02) matures "
     "zero plots, and widening to 0.40 only reaches -19.31, because uniform random actions almost "
     "never produce the long coordinated sequence - irrigate repeatedly, then harvest at maturity - "
@@ -386,9 +433,11 @@ CUM_REWARDS = (
     "random floor (-8.7) and the expert ceiling (+171.0); Figure 2(b) shows the held-out evaluation "
     "return of all ten runs per algorithm. The separation is categorical rather than marginal. PPO "
     "reaches +78.83 - about 46 per cent of the expert heuristic - while DQN's best reaches +7.17, "
-    "roughly 4 per cent. Median performance tells the same story more sharply: PPO +61.58, A2C "
+    "roughly 4 per cent.\n"
+    "Median performance tells the same story more sharply: PPO +61.58, A2C "
     "+2.73, REINFORCE +1.04, DQN -39.50. Every algorithm's best run clears the random floor, so all "
-    "four learn something, but only PPO learns a policy a farmer would deploy. The spread within "
+    "four learn something, but only PPO learns a policy a farmer would deploy.\n"
+    "The spread within "
     "each algorithm is itself a result: DQN spans 83.1 points across its ten configurations while "
     "PPO spans 50.3 points entirely above zero, so a practitioner deploying DQN here would have to "
     "tune carefully to avoid a catastrophic configuration whereas PPO's worst case remains usable."
@@ -509,30 +558,32 @@ def main():
     P = doc.paragraphs
 
     set_text(P[1], "Student Name: Enock Mugisha")
-    set_text(P[2], f"Video Recording: {VIDEO}\n"
-                   f"GitHub Repository: {GITHUB}")
+    set_text(P[2], "Video Recording: ")
+    add_hyperlink(P[2], VIDEO, VIDEO)
+    gh = para_after(P[2], "GitHub Repository: ")
+    add_hyperlink(gh, GITHUB, GITHUB)
 
-    set_text(P[4], OVERVIEW)
+    set_body(P[4], OVERVIEW)
 
     # Environment Description (P5 heading) -> body + the environment visual
-    env_body = para_after(P[5], ENVIRONMENT)
+    env_body = set_body(para_after(P[5]), ENVIRONMENT)
     figure_after(env_body, FIGS / "fig0_environment.png",
                  "Figure 1 - The AgriGuard environment rendered live in Three.js (WebGL). Soil "
                  "brightness encodes moisture, stalk height and colour encode growth stage, red "
                  "haze encodes infestation severity; the rover acts on the plot beneath it.")
 
-    set_text(P[7], AGENT)
+    set_body(P[7], AGENT)
     set_text(P[8], "Action Space", bold=True)
-    set_text(P[9], ACTION_SPACE)
-    set_text(P[11], OBSERVATION)
-    set_text(P[15], REWARD)
+    set_body(P[9], ACTION_SPACE)
+    set_body(P[11], OBSERVATION)
+    set_body(P[15], REWARD)
 
-    set_text(para_after(P[16], SYSTEM_DESIGN), SYSTEM_DESIGN)
-    set_text(P[18], DQN_DESIGN)
+    set_body(para_after(P[16]), SYSTEM_DESIGN)
+    set_body(P[18], DQN_DESIGN)
     set_text(P[19], "Policy Gradient Methods (REINFORCE, A2C and PPO)")
-    set_text(P[20], PG_DESIGN)
+    set_body(P[20], PG_DESIGN)
 
-    set_text(para_after(P[21], IMPLEMENTATION_INTRO), IMPLEMENTATION_INTRO)
+    set_body(para_after(P[21]), IMPLEMENTATION_INTRO)
     set_text(P[22], "DQN")
     P[22].style = doc.styles["Heading 3"]
     set_text(P[24], "REINFORCE")
@@ -557,7 +608,7 @@ def main():
         ["Learning Rate", "Gamma", "Replay Buffer", "Batch Size", "Epsilon Floor",
          "n-step", "Target Tau", "Updates/Batch", "Objective", "Mean Reward"])
     fill_table(t[1], hdr, rows)
-    insert_after(t[1]._tbl, DQN_ANALYSIS)
+    set_body(insert_after(t[1]._tbl), DQN_ANALYSIS)
 
     hdr, rows = table_rows(
         "table_reinforce.csv",
@@ -566,7 +617,7 @@ def main():
         ["Learning Rate", "Gamma", "Rollout (frames)", "Entropy Coeff",
          "Advantage Norm", "Critic Coeff", "Hidden", "Mean Reward"])
     fill_table(t[2], hdr, rows)
-    insert_after(t[2]._tbl, RF_ANALYSIS)
+    set_body(insert_after(t[2]._tbl), RF_ANALYSIS)
 
     hdr, rows = table_rows(
         "table_ppo.csv",
@@ -575,7 +626,7 @@ def main():
         ["Learning Rate", "Rollout (frames)", "Clip Epsilon", "Epochs",
          "Minibatch", "Entropy Coeff", "GAE Lambda", "Mean Reward"])
     fill_table(t[3], hdr, rows)
-    ppo_an = insert_after(t[3]._tbl, PPO_ANALYSIS)
+    ppo_an = set_body(insert_after(t[3]._tbl), PPO_ANALYSIS)
 
     # The template ships only three hyperparameter tables; A2C is required too.
     a2c_head = insert_after(ppo_an._element, "A2C", style="Heading 3")
@@ -589,20 +640,19 @@ def main():
         ["Learning Rate", "Gamma", "Rollout (frames)", "Entropy Coeff",
          "GAE Lambda", "Critic Coeff", "Grad Clip", "Mean Reward"])
     fill_table(a2c_tbl, hdr, rows)
-    insert_after(a2c_tbl._tbl, A2C_ANALYSIS)
+    set_body(insert_after(a2c_tbl._tbl), A2C_ANALYSIS)
 
     # ---- results discussion -------------------------------------------
     set_text(P[32], "Each figure below is referenced and interpreted in the text that follows it.")
     set_text(P[34], "Cumulative Rewards", bold=True)
-    set_text(P[35], CUM_REWARDS)
+    set_body(P[35], CUM_REWARDS)
     figure_after(P[35], FIGS / "fig1_comparative_rewards.png",
                  "Figure 2 - (a) Training return of each algorithm's best configuration against the "
                  "random floor and expert ceiling. (b) Held-out evaluation return of all ten runs "
                  "per algorithm.")
 
     set_text(P[36], "Training Stability")
-    stab = para_after(P[36], STABILITY)
-    set_text(stab, STABILITY)
+    stab = set_body(para_after(P[36]), STABILITY)
     f3 = figure_after(stab, FIGS / "fig2_dqn_objective.png",
                       "Figure 3 - DQN value objective for the best run: TD loss, mean max-Q on "
                       "replay batches, and the epsilon schedule.")
@@ -611,19 +661,19 @@ def main():
                  "uniform maximum ln(9) = 2.20. (b) Critic loss, log scale.")
 
     set_text(P[37], "Episodes To Converge", bold=True)
-    set_text(P[38], CONVERGENCE)
+    set_body(P[38], CONVERGENCE)
     set_text(P[39], "")
     figure_after(P[39], FIGS / "fig4_convergence.png",
                  "Figure 5 - Frames required to first reach each return threshold, per algorithm.")
 
     set_text(P[41], "Generalization", bold=True)
-    set_text(P[42], GENERALIZATION)
+    set_body(P[42], GENERALIZATION)
     figure_after(P[42], FIGS / "fig5_generalization.png",
                  "Figure 6 - Final training return against held-out evaluation return. Points on "
                  "the diagonal generalise; points below it are optimistic on the training "
                  "distribution.")
 
-    set_text(P[44], CONCLUSION)
+    set_body(P[44], CONCLUSION)
 
     add_page_numbers(doc)
 
