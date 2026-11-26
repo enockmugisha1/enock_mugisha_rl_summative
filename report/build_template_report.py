@@ -99,7 +99,7 @@ def para_after(p, text="", style="normal"):
     return insert_after(p._element, text, style)
 
 
-def figure_after(p, png: Path, caption: str, width=6.0):
+def figure_after(p, png: Path, caption: str, width=5.5):
     """Insert a picture + italic caption after paragraph p. Returns last para."""
     holder = para_after(p, style="normal")
     holder.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -172,7 +172,7 @@ def add_hyperlink(para, url, text):
     return para
 
 
-def set_body(p, text, space_after=7):
+def set_body(p, text, space_after=5):
     """Write a multi-paragraph block.
 
     The content strings use \n to separate paragraphs; writing them into a
