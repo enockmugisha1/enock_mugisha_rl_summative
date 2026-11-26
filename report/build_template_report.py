@@ -24,6 +24,7 @@ FIGS = ROOT / "figures"
 LOGS = ROOT / "logs"
 
 GITHUB = "https://github.com/enockmugisha1/enock_mugisha_rl_summative"
+VIDEO = "https://youtu.be/DHY4afuGcKY"
 
 
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}w"
@@ -484,7 +485,7 @@ def main():
     P = doc.paragraphs
 
     set_text(P[1], "Student Name: Enock Mugisha")
-    set_text(P[2], "Video Recording: [paste your video link here]\n"
+    set_text(P[2], f"Video Recording: {VIDEO}\n"
                    f"GitHub Repository: {GITHUB}")
 
     set_text(P[4], OVERVIEW)
