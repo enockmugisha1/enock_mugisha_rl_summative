@@ -107,9 +107,7 @@ def figure_after(p, png: Path, caption: str, width=6.0):
     cap = para_after(holder, style="normal")
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = cap.add_run(caption)
-    r.italic = True
-    r.font.size = Pt(8.5)
-    r.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
+    r.font.size = Pt(9)
     return cap
 
 
@@ -476,6 +474,32 @@ CONCLUSION = (
 )
 
 
+def add_page_numbers(doc):
+    """Centred 'Page N of M' in the footer of every section."""
+    for section in doc.sections:
+        footer = section.footer
+        para = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+        for r in list(para.runs):
+            r._element.getparent().remove(r._element)
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        def field(instr):
+            r = OxmlElement("w:r")
+            f1 = OxmlElement("w:fldChar"); f1.set(qn("w:fldCharType"), "begin")
+            it = OxmlElement("w:instrText"); it.set(qn("xml:space"), "preserve")
+            it.text = instr
+            f2 = OxmlElement("w:fldChar"); f2.set(qn("w:fldCharType"), "end")
+            r.append(f1); r.append(it); r.append(f2)
+            return r
+
+        para.add_run("Page ")
+        para._p.append(field(" PAGE "))
+        para.add_run(" of ")
+        para._p.append(field(" NUMPAGES "))
+        for r in para.runs:
+            r.font.size = Pt(9)
+
+
 # ---------------------------------------------------------------- assembly
 def main():
     global DOC
@@ -600,6 +624,8 @@ def main():
                  "distribution.")
 
     set_text(P[44], CONCLUSION)
+
+    add_page_numbers(doc)
 
     # drop the template's trailing empty Heading 3 and any stray empty paragraphs
     for para in list(doc.paragraphs):
