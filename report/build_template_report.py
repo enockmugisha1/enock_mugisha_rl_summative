@@ -99,7 +99,7 @@ def para_after(p, text="", style="normal"):
     return insert_after(p._element, text, style)
 
 
-def figure_after(p, png: Path, caption: str, width=5.5):
+def figure_after(p, png: Path, caption: str, width=5.2):
     """Insert a picture + italic caption after paragraph p. Returns last para."""
     holder = para_after(p, style="normal")
     holder.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -184,12 +184,12 @@ def set_body(p, text, space_after=5):
         return p
     set_text(p, chunks[0])
     p.paragraph_format.space_after = Pt(space_after)
-    p.paragraph_format.line_spacing = 1.15
+    p.paragraph_format.line_spacing = 1.06
     last = p
     for c in chunks[1:]:
         last = para_after(last, c)
         last.paragraph_format.space_after = Pt(space_after)
-        last.paragraph_format.line_spacing = 1.15
+        last.paragraph_format.line_spacing = 1.06
     return last
 
 
@@ -275,6 +275,24 @@ OBSERVATION = (
     "sees only the measurable quantities below, each mapped to how it would be obtained on a "
     "real farm."
 )
+
+OBS_PATH = {
+    "moisture[16]": "LoRaWAN -> gateway -> MQTT broker -> state estimator -> obs[0:16]",
+    "growth[16]": "Raster tile -> per-plot zonal mean -> normalised -> obs[16:32]",
+    "nutrient[16]": "Sensor log -> rolling weekly mean -> obs[32:48]",
+    "pest[16]": "Phone upload -> CNN severity score -> obs[48:64]",
+    "health[16]": "Computed in the state estimator -> obs[64:80]",
+    "alive[16]": "Computed from health -> obs[80:96]",
+    "harvested[16]": "Farm database flag -> obs[96:112]",
+    "rover[16]": "GPS fix -> nearest-plot index -> one-hot -> obs[112:128]",
+    "tank": "Telemetry -> obs[128]",
+    "fert_stock": "Inventory app -> /12 -> obs[129]",
+    "pest_stock": "Inventory app -> /8 -> obs[130]",
+    "day_frac": "Clock -> /60 -> obs[131]",
+    "rain_prob": "Forecast API -> obs[132]",
+    "temp": "Weather station -> normalised -> obs[133]",
+    "rained_today": "Rain gauge -> obs[134]",
+}
 
 OBS_ROWS = [
     ["moisture[16]", "Volumetric soil water content per plot", "Capacitive soil-moisture probe buried per plot (LoRaWAN -> MQTT)", "float32, continuous", "0.0 - 1.0 (0 = oven-dry, 1 = saturated); updated every 15 min"],
@@ -368,6 +386,25 @@ PG_DESIGN = (
     "Entropy regularisation and advantage normalisation are configurable and both are swept."
 )
 
+
+INTEGRATION = (
+    "Integration path. A trained policy is a single TorchRL state dict of about 0.4 MB under "
+    "models/pg/ or models/dqn/, saved together with its configuration, observation dimension "
+    "and action count, so a checkpoint is self-describing and can be reloaded without the "
+    "training code. training/baselines.py: load_trained_policy(name) resolves a checkpoint and "
+    "returns a plain callable with the signature act(obs: np.ndarray[135]) -> int, which is the "
+    "entire inference contract - no TorchRL objects cross that boundary.\n"
+    "play.py consumes exactly that callable and drives the live Three.js viewer, which is the "
+    "same interface a deployment would use. For a field system the policy would be exported to "
+    "TorchScript or ONNX and served two ways: on-device inside the rover controller, or behind "
+    "a small HTTP endpoint for an advisory mobile app, where the 135-dimensional observation is "
+    "assembled from the sensor sources in the table above and the returned integer maps straight "
+    "back to one of the nine rover commands. Because the observation is already scaled to [0, 1] "
+    "and the action space is a 9-way discrete choice, the serving payload is a 135-float vector "
+    "in and one integer out.\n"
+    "What is implemented today is the decision layer and its simulator; the sensor integration "
+    "described above is a deployment design, not a live data pipeline."
+)
 
 IMPLEMENTATION_INTRO = (
     "Every row below is a separate training run on the identical environment with the identical "
@@ -578,7 +615,8 @@ def main():
     set_body(P[11], OBSERVATION)
     set_body(P[15], REWARD)
 
-    set_body(para_after(P[16]), SYSTEM_DESIGN)
+    sysd = set_body(para_after(P[16]), SYSTEM_DESIGN)
+    set_body(para_after(sysd), INTEGRATION)
     set_body(P[18], DQN_DESIGN)
     set_text(P[19], "Policy Gradient Methods (REINFORCE, A2C and PPO)")
     set_body(P[20], PG_DESIGN)
@@ -598,8 +636,9 @@ def main():
     # Table 0 in the template is the observation-provenance table.
     fill_table(t[0],
                ["Observation", "Description", "Source (Sensor/Camera/API/Data)",
-                "Encoding / Data Type", "Range & Update Cadence"],
-               OBS_ROWS, font=7.5)
+                "Encoding / Data Type", "Range & Update Cadence",
+                "Path into the agent"],
+               [r + [OBS_PATH.get(r[0], "")] for r in OBS_ROWS], font=6.5)
 
     hdr, rows = table_rows(
         "table_dqn.csv",
